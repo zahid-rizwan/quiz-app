@@ -1,5 +1,6 @@
 import React from 'react';
 import { Edit2 } from 'lucide-react';
+import { useSelector } from 'react-redux';
 
 interface ProfileHeaderProps {
   student: {
@@ -12,6 +13,7 @@ interface ProfileHeaderProps {
 }
 
 export default function ProfileHeader({ student, onEdit }: ProfileHeaderProps) {
+  const {user}=useSelector((state)=>state.auth);
   return (
     <header className="bg-indigo-600 text-white py-6">
       <div className="container mx-auto px-4">
@@ -27,7 +29,7 @@ export default function ProfileHeader({ student, onEdit }: ProfileHeaderProps) {
               </div>
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{student.name}</h1>
+              <h1 className="text-2xl font-bold">{user?.name || "John doe"}</h1>
               <p className="text-indigo-200">{student.program} • Year {student.year}</p>
             </div>
           </div>

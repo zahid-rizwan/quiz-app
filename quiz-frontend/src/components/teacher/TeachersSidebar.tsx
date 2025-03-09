@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, LayoutDashboard, BookOpen,BarChart2, History, LogOut, PlayCircle } from 'lucide-react';
+import {logout} from '../../store/slice/authSlice'
+import { useDispatch } from 'react-redux';
 
 const TeachersSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const handleResize = () => {
@@ -38,12 +41,22 @@ const TeachersSidebar = () => {
       icon: History
     },
     {
-      path: '/subjects',
+      path: '/dashboard-teacher/subjects',
       name: 'Subjects',
       icon: BookOpen
     }
     
   ];
+  const handleLogout = () =>{
+      dispatch(
+        logout()
+      )
+      localStorage.removeItem("token");
+      localStorage.removeItem("id");
+      localStorage.removeItem("user");
+      localStorage.removeItem("role");
+      navigate("/")
+    }
 
   const isActivePath = (path: string) => {
     return location.pathname === path || location.pathname === path + '/';
@@ -94,7 +107,7 @@ const TeachersSidebar = () => {
 
             <div className="p-4 border-t">
               <button 
-                onClick={() => navigate('/login')}
+                onClick={() =>{handleLogout()}}
                 className="flex items-center w-full px-4 py-3 rounded-lg text-red-600 hover:bg-red-50"
               >
                 <LogOut className="w-6 h-6" />

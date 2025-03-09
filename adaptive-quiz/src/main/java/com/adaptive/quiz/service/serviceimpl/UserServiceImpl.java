@@ -69,13 +69,13 @@
 //}
 package com.adaptive.quiz.service.serviceimpl;
 
-import com.adaptive.quiz.entity.Role;
-import com.adaptive.quiz.entity.User;
-import com.adaptive.quiz.entity.UserPrincipal;
+import com.adaptive.quiz.entity.*;
 import com.adaptive.quiz.exception.InvalidCredentialsException;
 import com.adaptive.quiz.exception.UserNotFoundException;
 import com.adaptive.quiz.model.JwtRequest;
 import com.adaptive.quiz.model.JwtResponse;
+import com.adaptive.quiz.repository.StudentRepository;
+import com.adaptive.quiz.repository.TeacherRepository;
 import com.adaptive.quiz.repository.UserRepository;
 import com.adaptive.quiz.service.RoleService;
 import com.adaptive.quiz.service.TeacherService;
@@ -109,6 +109,11 @@ public class UserServiceImpl implements UserService {
     private JWTService jwtService;
     @Autowired
     private TeacherService teacherService;
+    @Autowired
+    private StudentRepository studentRepository;
+
+    @Autowired
+    private TeacherRepository teacherRepository;
 
     @Override
     public User createUser(User user) {
@@ -141,6 +146,7 @@ public class UserServiceImpl implements UserService {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(jwtRequest.getEmail(), jwtRequest.getPassword())
             );
+
             if (authentication.isAuthenticated()) {
                 Object principal = authentication.getPrincipal();
                 if(principal instanceof UserPrincipal userPrincipal) {
@@ -151,10 +157,40 @@ public class UserServiceImpl implements UserService {
                     System.out.println("Authorities:" + authentication.getAuthorities());
 
                     String token = jwtService.generateToken(authenticatedUser.getEmail());
+
+                    // Check user roles and return appropriate entity
+                    boolean isStudent = authenticatedUser.getRoles().stream()
+                            .anyMatch(role -> role.getName().equals("STUDENT"));
+                    boolean isTeacher = authenticatedUser.getRoles().stream()
+                            .anyMatch(role -> role.getName().equals("TEACHER"));
+
+                    try {
+                        if (isStudent) {
+                            // Use JPQL query to avoid fetching associations
+                            Student student = studentRepository.findByUserIdWithoutAssociations(authenticatedUser.getId());
+                            if (student != null) {
+                                return new JwtResponse(token, authenticatedUser, student);
+                            }
+                        } else if (isTeacher) {
+                            System.out.println("in isTeacher");
+                            // Use JPQL query to avoid fetching associations
+                            Teacher teacher = teacherRepository.findByUserIdWithoutAssociations(authenticatedUser.getId());
+                            if (teacher != null) {
+                                return new JwtResponse(token, authenticatedUser, teacher);
+                            }
+                        }
+                    } catch (Exception e) {
+                        // Log the error but continue with basic response
+                        System.err.println("Error fetching role-specific entity: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+
+                    // If we couldn't find the associated entity or user has no specific role
                     return new JwtResponse(token, authenticatedUser);
                 }
             }
         } catch (Exception ex) {
+            ex.printStackTrace(); // Log the full stack trace for debugging
             throw new InvalidCredentialsException("Invalid username or password.");
         }
         return null;

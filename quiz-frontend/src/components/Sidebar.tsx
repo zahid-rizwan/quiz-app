@@ -182,7 +182,7 @@ const Sidebar = () => {
       icon: History
     },
     {
-      path: '/subjects',
+      path: '/dashboard/subjects',
       name: 'Subjects',
       icon: BookOpen
     }
@@ -200,6 +200,9 @@ const Sidebar = () => {
       logout()
     )
     localStorage.removeItem("token");
+    localStorage.removeItem("id");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
     navigate("/")
   }
 

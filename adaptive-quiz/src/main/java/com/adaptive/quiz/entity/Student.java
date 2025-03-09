@@ -1,5 +1,6 @@
 package com.adaptive.quiz.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.OnDelete;
@@ -15,7 +16,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
+@ToString(exclude = "quizAttempts")
 public class Student {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
@@ -34,6 +35,7 @@ public class Student {
     private String phone;
 
     @Column(columnDefinition = "TEXT")
+    @JsonIgnore
     private String address;
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL)
     private Set<QuizAttempt> quizAttempts = new HashSet<>();

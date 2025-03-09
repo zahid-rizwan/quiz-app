@@ -67,7 +67,7 @@ const SubjectsPage = () => {
   }, []);
 
   const handleSubjectClick = (subjectId) => {
-    navigate(`/subjects/${subjectId}`);
+    navigate(`/dashboard-teacher/subjects/${subjectId}`);
   };
 
   if (loading) {

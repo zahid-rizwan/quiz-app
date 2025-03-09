@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface StudentResponseRepository extends JpaRepository<StudentResponse, Long> {
@@ -14,4 +15,5 @@ public interface StudentResponseRepository extends JpaRepository<StudentResponse
 
     @Query("SELECT COUNT(sr) FROM StudentResponse sr WHERE sr.quizAttempt.id = :attemptId AND sr.isCorrect = true")
     int countCorrectResponsesByAttemptId(@Param("attemptId") Long attemptId);
+    Optional<StudentResponse> findByQuizAttemptAttemptIdAndQuestionQuestionId(Long attemptId, Long questionId);
 }

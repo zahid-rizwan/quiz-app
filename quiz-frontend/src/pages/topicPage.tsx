@@ -55,9 +55,30 @@ const TopicsPage = () => {
   }, [subjectId, navigate]);
 
   const handleTopicClick = (topicId) => {
-    navigate(`/quiz/${subjectId}/${topicId}`);
+    let role = localStorage.getItem('role');
+    
+    // Log the raw value
+    console.log("Raw role from localStorage:", JSON.stringify(role));
+    
+    // Clean the role string properly
+    if (role) {
+      // Remove quotes, trim spaces, and convert to uppercase
+      role = role.replace(/['"]/g, '').trim().toUpperCase();
+    }
+    
+    console.log("Cleaned role:", role);
+    
+    if (role === "STUDENT") {
+      navigate(`/quiz/${subjectId}/${topicId}`);
+    } 
+    else if (role === "TEACHER") {
+      console.log("Inside TEACHER condition");
+      navigate(`/dashboard-teacher/quiz/teacher/${subjectId}/${topicId}`);
+    }
+    else {
+      console.log("No matching role condition");
+    }
   };
-
   if (loading) {
     return <div className="container mx-auto py-6 flex justify-center items-center h-64">Loading topics...</div>;
   }

@@ -36,21 +36,21 @@ public class QuizAttemptServiceImpl implements QuizAttemptService {
 
     @Autowired
     private StudentResponseRepository studentResponseRepository;
+    @Autowired
+    private StudentQuizResultRepository studentQuizResultRepository;
 
     @Transactional
     @Override
     public QuizAttemptDTO startQuiz(Long studentId, Long quizId) {
-        Student student = studentRepository.findById(Math.toIntExact(studentId))
-                .orElseThrow(() -> new UserNotFoundException("Student not found with id: " + studentId));
+        Student student = studentRepository.findByUserId(Math.toIntExact(studentId)).orElseThrow(() -> new UserNotFoundException("Student not found with id: " + studentId));
 
-        Quiz quiz = quizRepository.findById(quizId)
-                .orElseThrow(() -> new UserNotFoundException("Quiz not found with id: " + quizId));
+        Quiz quiz = quizRepository.findById(quizId).orElseThrow(() -> new UserNotFoundException("Quiz not found with id: " + quizId));
 
         // Check if student already has an active attempt
-        Optional<QuizAttempt> existingAttempt = quizAttemptRepository.findByStudentStudentIdAndQuizQuizId((long) studentId, quizId);
-        if (existingAttempt.isPresent() && existingAttempt.get().getEndTime() == null) {
-            return mapToDTO(existingAttempt.get());
-        }
+//        Optional<QuizAttempt> existingAttempt = quizAttemptRepository.findByStudentStudentIdAndQuizQuizId((long) studentId, quizId);
+//        if (existingAttempt.isPresent() && existingAttempt.get().getEndTime() == null) {
+//            return mapToDTO(existingAttempt.get());
+//        }
 
         QuizAttempt quizAttempt = new QuizAttempt();
         quizAttempt.setStartTime(LocalDateTime.now());
@@ -62,33 +62,36 @@ public class QuizAttemptServiceImpl implements QuizAttemptService {
     }
 
 
-
     @Transactional
     @Override
     public QuizAttemptDTO submitQuizResponse(Long attemptId, SubmitResponseDTO responseDTO) {
-        QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
-                .orElseThrow(() -> new UserNotFoundException("Quiz attempt not found with id: " + attemptId));
+        QuizAttempt attempt = quizAttemptRepository.findById(attemptId).orElseThrow(() -> new UserNotFoundException("Quiz attempt not found with id: " + attemptId));
 
-        Question question = questionRepository.findById(responseDTO.getQuestionId())
-                .orElseThrow(() -> new UserNotFoundException("Question not found with id: " + responseDTO.getQuestionId()));
+        Question question = questionRepository.findById(responseDTO.getQuestionId()).orElseThrow(() -> new UserNotFoundException("Question not found with id: " + responseDTO.getQuestionId()));
 
-        StudentResponse response = new StudentResponse();
-        response.setQuizAttempt(attempt);
-        response.setQuestion(question);
+        // Check if a response for this question already exists for this attempt
+        Optional<StudentResponse> existingResponse = studentResponseRepository.findByQuizAttemptAttemptIdAndQuestionQuestionId(attemptId, responseDTO.getQuestionId());
 
-        boolean isCorrect = false;
+        StudentResponse response;
+        if (existingResponse.isPresent()) {
+            // Update existing response instead of creating a new one
+            response = existingResponse.get();
 
-//         For multiple choice questions
-//        if (question.getQuestionType() != QuestionType.OPEN_ENDED && responseDTO.getSelectedOptionId() != null) {
-            Option selectedOption = optionRepository.findById(responseDTO.getSelectedOptionId())
-                    .orElseThrow(() -> new UserNotFoundException("Option not found with id: " + responseDTO.getSelectedOptionId()));
-
+            // Update the selected option
+            Option selectedOption = optionRepository.findById(responseDTO.getSelectedOptionId()).orElseThrow(() -> new UserNotFoundException("Option not found with id: " + responseDTO.getSelectedOptionId()));
             response.setSelectedOption(selectedOption);
-            isCorrect = selectedOption.isCorrect();
-//        }
-        // For open-ended questions
+            response.setCorrect(selectedOption.isCorrect());
+        } else {
+            // Create a new response if one doesn't exist
+            response = new StudentResponse();
+            response.setQuizAttempt(attempt);
+            response.setQuestion(question);
 
-        response.setCorrect(isCorrect);
+            Option selectedOption = optionRepository.findById(responseDTO.getSelectedOptionId()).orElseThrow(() -> new UserNotFoundException("Option not found with id: " + responseDTO.getSelectedOptionId()));
+            response.setSelectedOption(selectedOption);
+            response.setCorrect(selectedOption.isCorrect());
+        }
+
         studentResponseRepository.save(response);
 
         return mapToDTO(attempt);
@@ -97,8 +100,7 @@ public class QuizAttemptServiceImpl implements QuizAttemptService {
     @Override
     @Transactional
     public QuizAttemptDTO finishQuiz(Long attemptId) {
-        QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
-                .orElseThrow(() -> new UserNotFoundException("Quiz attempt not found with id: " + attemptId));
+        QuizAttempt attempt = quizAttemptRepository.findById(attemptId).orElseThrow(() -> new UserNotFoundException("Quiz attempt not found with id: " + attemptId));
 
         // Calculate score
         int totalCorrect = studentResponseRepository.countCorrectResponsesByAttemptId(attemptId);
@@ -109,13 +111,51 @@ public class QuizAttemptServiceImpl implements QuizAttemptService {
         attempt.setScore(score);
 
         QuizAttempt finishedAttempt = quizAttemptRepository.save(attempt);
+        saveQuizResult(attemptId);
+
         return mapToDTO(finishedAttempt);
     }
 
     @Override
+    public List<StudentQuizResultDTO> getStudentResults(Long studentId) {
+        List<StudentQuizResult> results = studentQuizResultRepository.findByStudentStudentId(studentId);
+        return results.stream().map(this::mapToResultDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public StudentQuizResultDTO saveQuizResult(Long attemptId) {
+        QuizAttempt attempt = quizAttemptRepository.findById(attemptId).orElseThrow(() -> new UserNotFoundException("Quiz attempt not found with id: " + attemptId));
+
+        if (attempt.getEndTime() == null) {
+            throw new RuntimeException("Quiz is not finished yet");
+        }
+
+        // Calculate statistics
+        List<StudentResponse> responses = studentResponseRepository.findByQuizAttemptAttemptId(attemptId);
+        int totalQuestions = attempt.getQuiz().getQuestions().size();
+        int correctAnswers = (int) responses.stream().filter(StudentResponse::isCorrect).count();
+        int wrongAnswers = totalQuestions - correctAnswers;
+
+        // Create and save the result entity
+        StudentQuizResult result = new StudentQuizResult();
+        result.setQuizAttempt(attempt);
+        result.setStudent(attempt.getStudent());
+        result.setQuiz(attempt.getQuiz());
+        result.setScore(attempt.getScore());
+        result.setTotalQuestions(totalQuestions);
+        result.setCorrectAnswers(correctAnswers);
+        result.setWrongAnswers(wrongAnswers);
+        result.setPercentage((double) attempt.getScore());
+        result.setCompletedAt(attempt.getEndTime());
+
+        StudentQuizResult savedResult = studentQuizResultRepository.save(result);
+
+        return mapToResultDTO(savedResult);
+    }
+
     public QuizResultDTO getQuizResult(Long attemptId) {
-        QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
-                .orElseThrow(() -> new UserNotFoundException("Quiz attempt not found with id: " + attemptId));
+        QuizAttempt attempt = quizAttemptRepository.findById(attemptId).orElseThrow(() -> new UserNotFoundException("Quiz attempt not found with id: " + attemptId));
 
         if (attempt.getEndTime() == null) {
             throw new RuntimeException("Quiz is not finished yet");
@@ -138,6 +178,17 @@ public class QuizAttemptServiceImpl implements QuizAttemptService {
     }
 
     @Override
+    public List<StudentQuizResultDTO> getStudentResultsByQuiz(Long studentId, Long quizId) {
+        List<StudentQuizResult> results = studentQuizResultRepository.findByStudentIdAndQuizId(studentId, quizId);
+        return results.stream().map(this::mapToResultDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    public Integer getUniqueQuizAttemptCount(Long studentId) {
+        return studentQuizResultRepository.countUniqueQuizAttemptsByStudent(studentId);
+    }
+
+    @Override
     public List<QuizAttemptDTO> getStudentAttempts(Long studentId) {
         List<QuizAttempt> attempts = quizAttemptRepository.findByStudentStudentId(studentId);
         return attempts.stream().map(this::mapToDTO).collect(Collectors.toList());
@@ -145,22 +196,17 @@ public class QuizAttemptServiceImpl implements QuizAttemptService {
 
     @Override
     public QuizQuestionDTO getNextQuestion(Long attemptId) {
-        QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
-                .orElseThrow(() -> new UserNotFoundException("Quiz attempt not found with id: " + attemptId));
+        QuizAttempt attempt = quizAttemptRepository.findById(attemptId).orElseThrow(() -> new UserNotFoundException("Quiz attempt not found with id: " + attemptId));
 
         // Get questions already answered
         List<StudentResponse> responses = studentResponseRepository.findByQuizAttemptAttemptId(attemptId);
-        Set<Long> answeredQuestionIds = responses.stream()
-                .map(response -> response.getQuestion().getQuestionId())
-                .collect(Collectors.toSet());
+        Set<Long> answeredQuestionIds = responses.stream().map(response -> response.getQuestion().getQuestionId()).collect(Collectors.toSet());
 
         // Get all quiz questions
         Set<Question> quizQuestions = attempt.getQuiz().getQuestions();
 
         // Find unanswered questions
-        List<Question> unansweredQuestions = quizQuestions.stream()
-                .filter(question -> !answeredQuestionIds.contains(question.getQuestionId()))
-                .toList();
+        List<Question> unansweredQuestions = quizQuestions.stream().filter(question -> !answeredQuestionIds.contains(question.getQuestionId())).toList();
 
         if (unansweredQuestions.isEmpty()) {
             return null; // No more questions
@@ -184,9 +230,7 @@ public class QuizAttemptServiceImpl implements QuizAttemptService {
             }
 
             // Find questions of appropriate difficulty
-            List<Question> filteredQuestions = unansweredQuestions.stream()
-                    .filter(q -> Math.abs(q.getDifficultyLevel() - targetDifficulty) <= 1)
-                    .collect(Collectors.toList());
+            List<Question> filteredQuestions = unansweredQuestions.stream().filter(q -> Math.abs(q.getDifficultyLevel() - targetDifficulty) <= 1).collect(Collectors.toList());
 
             // If no questions of appropriate difficulty, use any unanswered question
             if (filteredQuestions.isEmpty()) {
@@ -220,6 +264,23 @@ public class QuizAttemptServiceImpl implements QuizAttemptService {
 
 //        questionDTO.setOptions(optionDTOs);
         return questionDTO;
+    }
+
+    private StudentQuizResultDTO mapToResultDTO(StudentQuizResult result) {
+        StudentQuizResultDTO resultDTO = new StudentQuizResultDTO();
+        resultDTO.setResultId(result.getResultId());
+        resultDTO.setAttemptId(result.getQuizAttempt().getAttemptId());
+        resultDTO.setStudentId((long) result.getStudent().getStudentId());
+        resultDTO.setStudentName(result.getStudent().getName());
+        resultDTO.setQuizId(result.getQuiz().getQuizId());
+        resultDTO.setQuizTitle(result.getQuiz().getQuizTitle());
+        resultDTO.setScore(result.getScore());
+        resultDTO.setTotalQuestions(result.getTotalQuestions());
+        resultDTO.setCorrectAnswers(result.getCorrectAnswers());
+        resultDTO.setWrongAnswers(result.getWrongAnswers());
+        resultDTO.setPercentage(result.getPercentage());
+        resultDTO.setCompletedAt(result.getCompletedAt());
+        return resultDTO;
     }
 
     private QuizAttemptDTO mapToDTO(QuizAttempt attempt) {

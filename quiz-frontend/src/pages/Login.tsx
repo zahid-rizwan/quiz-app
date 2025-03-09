@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import profile from '../assets/profile.webp'
 import { BrainCircuit } from 'lucide-react';
-import {login} from '../store/slice/authSlice'
+import { login } from '../store/slice/authSlice'
 import toast from 'react-hot-toast';
 import { LoginCredentials } from '../types/auth';
 import { useDispatch } from 'react-redux';
@@ -18,33 +18,42 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
+
     try {
       // Simulated login - Replace with actual API call
-     
-      if(true){
-        const response =await axios.post('http://localhost:9090/login',credentials);
+
+      if (true) {
+        const response = await axios.post('http://localhost:9090/login', credentials);
 
 
-      localStorage.setItem('token',response.data.jwtToken);
-      console.log("this is respons");
-      console.log(response);
-      console.log(response.data.jwtToken);
-      const role = response.data.user.roles?.[0]?.name || "No role found";
-      console.log(role);
-      dispatch(
-            login(response.data)
-          );
-          if(role == "STUDENT"){
-            toast.success('Welcome back, Quiz Master!');
+        localStorage.setItem('token', response.data.jwtToken);
+
+        console.log("this is respons");
+        console.log(response);
+        console.log(response.data.jwtToken);
+        const role = response.data.primaryRole || "No role found";
+        console.log(role);
+        localStorage.setItem('role', JSON.stringify(response.data.primaryRole));
+
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+           if (user && localStorage.getItem("token")) {
+             dispatch(login(user));
+           }
+        if (role == "STUDENT") {
+          localStorage.setItem('id', response.data.student.studentId);
+          localStorage.setItem('user', JSON.stringify(response?.data?.student));
+          
+          toast.success('Welcome back, Quiz Master!');
           navigate('/dashboard');
-          }
-          else if(role == "TEACHER"){
-            toast.success('Welcome back, Quiz Master!');
-          navigate("/dashboard-teacher/");
-          }
         }
-      else if(credentials.email === 'teacher@quiz.edu' && credentials.password === 'password'){
+        else if (role == "TEACHER") {
+          toast.success('Welcome back, Quiz Master!');
+          localStorage.setItem('id', response.data.teacher.teacherId);
+          localStorage.setItem('user', JSON.stringify(response?.data?.teacher));
+          navigate("/dashboard-teacher/");
+        }
+      }
+      else if (credentials.email === 'teacher@quiz.edu' && credentials.password === 'password') {
         login({
           id: '1',
           name: 'Zahid',

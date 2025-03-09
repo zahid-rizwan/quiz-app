@@ -1,9 +1,6 @@
 package com.adaptive.quiz.service;
 
-import com.adaptive.quiz.dto.QuizAttemptDTO;
-import com.adaptive.quiz.dto.QuizQuestionDTO;
-import com.adaptive.quiz.dto.QuizResultDTO;
-import com.adaptive.quiz.dto.SubmitResponseDTO;
+import com.adaptive.quiz.dto.*;
 import jakarta.transaction.Transactional;
 
 import java.util.List;
@@ -20,4 +17,8 @@ public interface QuizAttemptService {
     QuizResultDTO getQuizResult(Long attemptId);
     List<QuizAttemptDTO> getStudentAttempts(Long studentId);
     QuizQuestionDTO getNextQuestion(Long attemptId);
+    StudentQuizResultDTO saveQuizResult(Long attemptId);
+    List<StudentQuizResultDTO> getStudentResults(Long studentId);
+    List<StudentQuizResultDTO> getStudentResultsByQuiz(Long studentId, Long quizId);
+    Integer getUniqueQuizAttemptCount(Long studentId);
 }
