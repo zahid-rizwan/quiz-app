@@ -27,7 +27,6 @@ public class User {
     private String email;
 
     @Column(name = "password", nullable = false, length = 255)
-    @JsonIgnore
     private String password;
 
     @ManyToMany(fetch = FetchType.EAGER)

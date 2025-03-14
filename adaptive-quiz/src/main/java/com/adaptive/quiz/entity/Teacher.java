@@ -30,9 +30,6 @@ public class Teacher {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column
-    @JsonIgnore
-    private String password;
 
     private String specialization;
 

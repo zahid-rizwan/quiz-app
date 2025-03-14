@@ -6,6 +6,7 @@ import { login as loginDispatch } from "./store/slice/authSlice";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
 import TeachersSidebar from "./components/teacher/TeachersSidebar";
+import AdminSidebar from "./components/admin/AdminSidebar";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -18,6 +19,21 @@ import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import CreateQuiz from "./pages/teacher/CreateQuiz";
 import SubjectsPage from "./pages/subjectPage";
 import TopicsPage from "./pages/topicPage";
+
+// Admin pages
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminProfile from "./pages/admin/AdminProfile";
+import ManageTeachers from "./pages/admin/ManageTeachers";
+import ManageStudents from "./pages/admin/ManageStudents";
+import ManageQuizzes from "./pages/admin/ManageQuizzes";
+import ManageSubjects from "./pages/admin/ManageSubjects";
+import ManageTopics from "./pages/admin/ManageTopics";
+import AddTeacher from "./pages/admin/AddTeacher";
+import EditTeacher from "./pages/admin/EditTeacher";
+import AddSubject from "./pages/admin/AddSubject";
+import EditSubject from "./pages/admin/EditSubject";
+import AddTopic from "./pages/admin/AddTopic";
+import EditTopic from "./pages/admin/EditTopic";
 
 function App() {
   const dispatch = useDispatch();
@@ -46,7 +62,7 @@ function App() {
                   <Route path="/" element={<Profile />} />
                   <Route path="/performance" element={<Performance />} />
                   <Route path="/history" element={<QuizHistory />} />
-                  <Route path="/subject" element={<SubjectsPage />} />
+                  <Route path="/subjects" element={<SubjectsPage />} />
                 </Routes>
               </DashboardLayout>
             </ProtectedRoute>
@@ -72,9 +88,31 @@ function App() {
           }
         />
 
-        {/* Subjects & Topics Routes */}
-
-        
+        {/* Admin Dashboard Routes */}
+        <Route
+          path="/dashboard-admin/*"
+          element={
+            <ProtectedRoute>
+              <AdminDashboardLayout>
+                <Routes>
+                  <Route path="/" element={<AdminDashboard />} />
+                  <Route path="/profile" element={<AdminProfile />} />
+                  <Route path="/teachers" element={<ManageTeachers />} />
+                  <Route path="/teachers/add" element={<AddTeacher />} />
+                  <Route path="/teachers/edit/:teacherId" element={<EditTeacher />} />
+                  <Route path="/students" element={<ManageStudents />} />
+                  <Route path="/quizzes" element={<ManageQuizzes />} />
+                  <Route path="/subjects" element={<ManageSubjects />} />
+                  <Route path="/subjects/add" element={<AddSubject />} />
+                  <Route path="/subjects/edit/:subjectId" element={<EditSubject />} />
+                  <Route path="/topics" element={<ManageTopics />} />
+                  <Route path="/topics/add" element={<AddTopic />} />
+                  <Route path="/topics/edit/:topicId" element={<EditTopic />} />
+                </Routes>
+              </AdminDashboardLayout>
+            </ProtectedRoute>
+          }
+        />
 
         {/* Quiz Routes */}
         <Route
@@ -110,16 +148,23 @@ function App() {
 }
 
 // Layout Components for Clean Code
-const DashboardLayout = ({ children }: { children: React.ReactNode }) => (
+const DashboardLayout = ({ children }) => (
   <div className="flex">
     <Sidebar />
     <div className="flex-1 md:ml-20 lg:ml-64 p-4">{children}</div>
   </div>
 );
 
-const TeacherDashboardLayout = ({ children }: { children: React.ReactNode }) => (
+const TeacherDashboardLayout = ({ children }) => (
   <div className="flex">
     <TeachersSidebar />
+    <div className="flex-1 md:ml-20 lg:ml-64 p-4">{children}</div>
+  </div>
+);
+
+const AdminDashboardLayout = ({ children }) => (
+  <div className="flex">
+    <AdminSidebar />
     <div className="flex-1 md:ml-20 lg:ml-64 p-4">{children}</div>
   </div>
 );

@@ -51,6 +51,11 @@ export default function Login() {
           localStorage.setItem('id', response.data.teacher.teacherId);
           localStorage.setItem('user', JSON.stringify(response?.data?.teacher));
           navigate("/dashboard-teacher/");
+        }else{
+          toast.success('Welcome back, Quiz Master!');
+          // localStorage.setItem('id', response.data.teacher.teacherId);
+          // localStorage.setItem('user', JSON.stringify(response?.data?.teacher));
+          navigate("/dashboard-admin/");
         }
       }
       else if (credentials.email === 'teacher@quiz.edu' && credentials.password === 'password') {

@@ -123,6 +123,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User createUserWithRole(User user, String roleName) {
+        System.out.println("In role");
         user.setPassword(encoder.encode(user.getPassword()));
         Role role = roleService.findByName(roleName);
         if (role == null) {

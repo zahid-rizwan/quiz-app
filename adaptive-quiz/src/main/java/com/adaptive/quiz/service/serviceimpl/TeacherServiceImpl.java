@@ -41,7 +41,7 @@ public class TeacherServiceImpl implements TeacherService {
         Teacher teacher = new Teacher();
         teacher.setName(registrationDTO.getName());
         teacher.setEmail(registrationDTO.getEmail());
-        teacher.setPassword(passwordEncoder.encode(registrationDTO.getPassword()));
+//        teacher.setPassword(passwordEncoder.encode(registrationDTO.getPassword()));
         teacher.setSpecialization(registrationDTO.getSpecialization());
 
         Teacher savedTeacher = teacherRepository.save(teacher);

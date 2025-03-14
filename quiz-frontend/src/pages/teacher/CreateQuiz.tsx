@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Save } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Plus, Trash2, Save, Upload, FileText } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 interface QuizData {
   quizTitle: string;
@@ -27,15 +28,17 @@ interface Option {
 
 export default function CreateQuiz() {
   const { subjectId, topicId } = useParams();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [quizData, setQuizData] = useState<QuizData>({
     quizTitle: '',
     description: '',
     durationMinutes: 60,
     isAdaptive: true,
-    subjectId: Number(subjectId) || 0, // Convert to number with fallback
-    topicId: Number(topicId) || 0, // Convert to number with fallback
+    subjectId: Number(subjectId) || 0,
+    topicId: Number(topicId) || 0,
     questions: [],
   });
+  const [isUploading, setIsUploading] = useState(false);
 
   const addQuestion = () => {
     const newQuestion: Question = {
@@ -43,7 +46,7 @@ export default function CreateQuiz() {
       explanation: '',
       difficultyLevel: 1,
       options: [
-        { optionText: '', isCorrect: false }, // All options default to false
+        { optionText: '', isCorrect: false },
         { optionText: '', isCorrect: false },
         { optionText: '', isCorrect: false },
         { optionText: '', isCorrect: false },
@@ -63,7 +66,100 @@ export default function CreateQuiz() {
     );
     setQuizData({ ...quizData, questions: updatedQuestions });
   };
-  console.log("quiz" , quizData);
+
+  const handleExcelUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const processExcelData = (data: any[]) => {
+    try {
+      // Expected Excel format:
+      // First row contains quiz details: quiz_title, description, duration
+      const quizDetails = data[0] || {};
+      
+      // Extract questions starting from row 2
+      const questionRows = data.slice(1).filter(row => row.question_text);
+      
+      const parsedQuestions: Question[] = [];
+      
+      questionRows.forEach(row => {
+        // Create a new question from the row data
+        const question: Question = {
+          questionText: row.question_text || '',
+          explanation: row.explanation || '',
+          difficultyLevel: Number(row.difficulty_level) || 1,
+          options: []
+        };
+        
+        // Parse options - assuming columns are named option1, option2, etc.
+        // And correct answers are in columns correct1, correct2, etc. (boolean values)
+        for (let i = 1; i <= 4; i++) {
+          const optionText = row[`option${i}`] || '';
+          const isCorrect = row[`correct${i}`] === true || 
+                           row[`correct${i}`] === 'true' || 
+                           row[`correct${i}`] === 1 || 
+                           row[`correct${i}`] === '1';
+          
+          question.options.push({
+            optionText,
+            isCorrect
+          });
+        }
+        
+        parsedQuestions.push(question);
+      });
+      
+      // Update quiz data with parsed information
+      setQuizData({
+        ...quizData,
+        quizTitle: quizDetails.quiz_title || quizData.quizTitle,
+        description: quizDetails.description || quizData.description,
+        durationMinutes: Number(quizDetails.duration_minutes) || quizData.durationMinutes,
+        questions: parsedQuestions
+      });
+      
+      toast.success(`Successfully imported ${parsedQuestions.length} questions`);
+    } catch (error) {
+      console.error('Error parsing Excel data:', error);
+      toast.error('Failed to parse Excel file. Please check the format.');
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = event.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const excelData = XLSX.utils.sheet_to_json(worksheet);
+        
+        processExcelData(excelData);
+      } catch (error) {
+        console.error('Error reading Excel file:', error);
+        toast.error('Failed to read Excel file');
+      } finally {
+        setIsUploading(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    };
+    
+    reader.onerror = () => {
+      toast.error('Error reading file');
+      setIsUploading(false);
+    };
+    
+    reader.readAsBinaryString(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,11 +206,96 @@ export default function CreateQuiz() {
     }
   };
 
+  // Download a sample Excel template
+  const downloadSampleTemplate = () => {
+    // Create sample data for the template
+    const sampleData = [
+      { 
+        quiz_title: "Sample Quiz Title", 
+        description: "Sample quiz description", 
+        duration_minutes: 60 
+      },
+      {
+        question_text: "What is 2+2?",
+        explanation: "Basic addition",
+        difficulty_level: 1,
+        option1: "3",
+        correct1: false,
+        option2: "4",
+        correct2: true,
+        option3: "5",
+        correct3: false,
+        option4: "6",
+        correct4: false
+      },
+      {
+        question_text: "Which planet is closest to the sun?",
+        explanation: "Mercury is the first planet in our solar system",
+        difficulty_level: 2,
+        option1: "Venus",
+        correct1: false,
+        option2: "Earth",
+        correct2: false,
+        option3: "Mercury",
+        correct3: true,
+        option4: "Mars",
+        correct4: false
+      }
+    ];
+    
+    // Create a new workbook
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    
+    // Add the worksheet to the workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Quiz Template");
+    
+    // Generate the Excel file
+    XLSX.writeFile(workbook, "quiz_template.xlsx");
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Create New Quiz</h1>
         <p className="text-gray-600">Design a new quiz for your students</p>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold">Excel Upload</h2>
+            <p className="text-sm text-gray-600">
+              Upload an Excel file with your quiz questions to populate the form automatically.
+            </p>
+          </div>
+          <div className="flex space-x-3">
+            <button
+              type="button"
+              onClick={downloadSampleTemplate}
+              className="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Download Template
+            </button>
+            <button
+              type="button"
+              onClick={handleExcelUpload}
+              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              disabled={isUploading}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              {isUploading ? 'Uploading...' : 'Upload Excel'}
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".xlsx, .xls"
+              className="hidden"
+            />
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

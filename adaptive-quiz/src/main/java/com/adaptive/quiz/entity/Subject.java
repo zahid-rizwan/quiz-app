@@ -22,9 +22,13 @@ public class Subject {
     @Column(length = 500)
     private String description;
 
+    @Column(name = "teacher_id")
+    private Long teacherId;
+
     @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL,fetch = FetchType.LAZY,
             orphanRemoval = true)
     private Set<Topic> topics = new HashSet<>();
+
     public void addTopic(Topic topic) {
         if (topic != null) {
             this.topics.add(topic);
