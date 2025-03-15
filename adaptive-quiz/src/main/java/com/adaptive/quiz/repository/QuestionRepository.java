@@ -1,6 +1,7 @@
 package com.adaptive.quiz.repository;
 
 import com.adaptive.quiz.entity.Question;
+import com.adaptive.quiz.entity.Topic;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,4 +19,5 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     @Query("SELECT q FROM Question q WHERE q.topic.subject.id = :subjectId")
     List<Question> findBySubjectId(@Param("subjectId") Long subjectId);
+    List<Question> findByTopicInAndDifficultyLevel(List<Topic> topics, Integer difficultyLevel);
 }

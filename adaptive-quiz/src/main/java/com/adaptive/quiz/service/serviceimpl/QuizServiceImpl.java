@@ -2,6 +2,7 @@ package com.adaptive.quiz.service.serviceimpl;
 
 import com.adaptive.quiz.dto.*;
 import com.adaptive.quiz.entity.*;
+import com.adaptive.quiz.exception.InsufficientQuestionsException;
 import com.adaptive.quiz.exception.UserNotFoundException;
 import com.adaptive.quiz.repository.*;
 import com.adaptive.quiz.service.QuizService;
@@ -11,10 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +36,8 @@ public class QuizServiceImpl implements QuizService {
     private  TopicRepository topicRepository;
     @Autowired
     private TeacherService teacherService;
+    @Autowired
+    private  StudentRepository studentRepository;
 
     @Transactional
     @Override
@@ -350,6 +350,76 @@ public class QuizServiceImpl implements QuizService {
 
         return quizQuestions;
     }
+    @Transactional
+    @Override
+    public QuizDTO createAutomaticQuiz(Long studentId, AutoQuizRequestDTO requestDTO) {
+        // Validate teacher
+//        Teacher teacher = teacherRepository.findById(teacherId)
+//                .orElseThrow(() -> new UserNotFoundException("Teacher not found with id: " + teacherId));
+        Student student = studentRepository.findById(Math.toIntExact(studentId)).orElseThrow(()->new UserNotFoundException("Student not found with id: " + studentId));
+
+
+        // Validate subjects exist
+        List<Subject> subjects = new ArrayList<>();
+        for (Long subjectId : requestDTO.getSubjectIds()) {
+            Subject subject = subjectRepository.findById(subjectId)
+                    .orElseThrow(() -> new UserNotFoundException("Subject not found with id: " + subjectId));
+            subjects.add(subject);
+        }
+
+        // Validate topics exist
+        List<Topic> topics = new ArrayList<>();
+        for (Long topicId : requestDTO.getTopicIds()) {
+            Topic topic = topicRepository.findById(topicId)
+                    .orElseThrow(() -> new UserNotFoundException("Topic not found with id: " + topicId));
+            topics.add(topic);
+        }
+
+        // Find questions matching the criteria
+        List<Question> matchingQuestions = questionRepository.findByTopicInAndDifficultyLevel(
+                topics,
+                requestDTO.getDifficultyLevel()
+        );
+
+        if (matchingQuestions.size() < requestDTO.getNumberOfQuestions()) {
+            throw new InsufficientQuestionsException(
+                    "Not enough questions available with the specified criteria. " +
+                            "Found " + matchingQuestions.size() + " questions, but " +
+                            requestDTO.getNumberOfQuestions() + " were requested."
+            );
+        }
+
+        // Randomly select the required number of questions
+        Collections.shuffle(matchingQuestions);
+        List<Question> selectedQuestions = matchingQuestions.subList(0, requestDTO.getNumberOfQuestions());
+
+        // Calculate duration: 1.5 minutes per question
+        int durationMinutes = (int) Math.ceil(requestDTO.getNumberOfQuestions() * 1.5);
+
+        // Create quiz
+        Quiz quiz = new Quiz();
+        quiz.setQuizTitle(requestDTO.getQuizTitle());
+        quiz.setDescription(requestDTO.getDescription());
+        quiz.setDurationMinutes(durationMinutes);
+        quiz.setCreatedAt(LocalDateTime.now());
+        quiz.setAdaptive(requestDTO.isAdaptive());
+//        quiz.setTeacher(teacher);
+        quiz.setStudentId(Math.toIntExact(studentId));
+
+        // Assign primary subject and topic
+        // For simplicity, we'll use the first subject and topic from the lists
+        quiz.setSubject(subjects.get(0));
+        quiz.setTopic(topics.get(0));
+
+        // Set questions
+        quiz.setQuestions(new HashSet<>(selectedQuestions));
+
+        // Save quiz
+        Quiz savedQuiz = quizRepository.save(quiz);
+
+        // Return DTO
+        return mapToDTO(savedQuiz);
+    }
 
     private QuizDTO mapToDTO(Quiz quiz) {
         QuizDTO quizDTO = new QuizDTO();
@@ -359,17 +429,39 @@ public class QuizServiceImpl implements QuizService {
         quizDTO.setDurationMinutes(quiz.getDurationMinutes());
         quizDTO.setCreatedAt(quiz.getCreatedAt());
         quizDTO.setAdaptive(quiz.isAdaptive());
-        quizDTO.setTeacherId(quiz.getTeacher().getTeacherId());
-        quizDTO.setTeacherName(quiz.getTeacher().getName());
+//        quizDTO.setTeacherId(quiz.getTeacher().getTeacherId());
+//        quizDTO.setTeacherName(quiz.getTeacher().getName());
         quizDTO.setSubjectId(quiz.getSubject().getSubjectId());
         quizDTO.setSubjectName(quiz.getSubject().getSubjectName());
         quizDTO.setTopicId(quiz.getTopic().getTopicId()); // Set topicId
         quizDTO.setTopicName(quiz.getTopic().getTopicName()); // Set topicName
 
-        Set<Long> questionIds = quiz.getQuestions().stream()
-                .map(Question::getQuestionId)
+        // Map questions with their details
+        Set<QuizQuestionDetailDTO> questionDetails = quiz.getQuestions().stream()
+                .map(question -> {
+                    QuizQuestionDetailDTO questionDetailDTO = new QuizQuestionDetailDTO();
+                    questionDetailDTO.setQuestionId(question.getQuestionId());
+                    questionDetailDTO.setQuestionText(question.getQuestionText());
+                    questionDetailDTO.setExplanation(question.getExplanation());
+                    questionDetailDTO.setDifficultyLevel(question.getDifficultyLevel());
+
+                    // Map options
+                    List<OptionDetailDTO> optionDetails = question.getOptions().stream()
+                            .map(option -> {
+                                OptionDetailDTO optionDetailDTO = new OptionDetailDTO();
+                                optionDetailDTO.setOptionId(option.getOptionId());
+                                optionDetailDTO.setOptionText(option.getOptionText());
+                                optionDetailDTO.setCorrect(option.isCorrect());
+                                return optionDetailDTO;
+                            })
+                            .collect(Collectors.toList());
+
+                    questionDetailDTO.setOptions(optionDetails);
+                    return questionDetailDTO;
+                })
                 .collect(Collectors.toSet());
-        quizDTO.setQuestionIds(questionIds);
+
+        quizDTO.setQuestions(questionDetails);
 
         return quizDTO;
     }

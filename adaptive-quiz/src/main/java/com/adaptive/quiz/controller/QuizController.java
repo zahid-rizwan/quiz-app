@@ -1,10 +1,13 @@
 package com.adaptive.quiz.controller;
 
 import com.adaptive.quiz.dto.*;
+import com.adaptive.quiz.exception.InsufficientQuestionsException;
 import com.adaptive.quiz.service.QuizService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,6 +32,19 @@ public class QuizController {
         QuizDTO quizDTO = quizService.getQuizById(quizId);
         ApiResponse<QuizDTO> response = new ApiResponse<>(true, "Quiz retrieved successfully", quizDTO);
         return ResponseEntity.ok(response);
+    }
+    @PostMapping("/teacher/{teacherId}/auto-generate")
+    public ResponseEntity<?> createAutomaticQuiz(
+            @PathVariable Long teacherId,
+            @Valid @RequestBody AutoQuizRequestDTO requestDTO) {
+        try {
+            QuizDTO quiz = quizService.createAutomaticQuiz(teacherId, requestDTO);
+            ApiResponse<QuizDTO> response = new ApiResponse<>(true,"quiz generate successfully",quiz);
+            return ResponseEntity.ok(response);
+        } catch (InsufficientQuestionsException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
     }
 
     @GetMapping
@@ -94,5 +110,16 @@ public class QuizController {
         ApiResponse<List<TopicQuizDTO>> response = new ApiResponse<>(true,
                 "Topic quizzes with detailed questions retrieved successfully", quizzes);
         return ResponseEntity.ok(response);
+    }
+    private static class ErrorResponse {
+        private final String message;
+
+        public ErrorResponse(String message) {
+            this.message = message;
+        }
+
+        public String getMessage() {
+            return message;
+        }
     }
 }

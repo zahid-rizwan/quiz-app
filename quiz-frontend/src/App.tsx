@@ -34,6 +34,7 @@ import AddSubject from "./pages/admin/AddSubject";
 import EditSubject from "./pages/admin/EditSubject";
 import AddTopic from "./pages/admin/AddTopic";
 import EditTopic from "./pages/admin/EditTopic";
+import AllQuizes from "./pages/AllQuizes";
 
 function App() {
   const dispatch = useDispatch();
@@ -63,6 +64,9 @@ function App() {
                   <Route path="/performance" element={<Performance />} />
                   <Route path="/history" element={<QuizHistory />} />
                   <Route path="/subjects" element={<SubjectsPage />} />
+                  <Route path="/all-quizzes" element={<AllQuizes/>} />
+                  <Route path="/quiz/:quizId" element={<QuizPage/>} />
+
                 </Routes>
               </DashboardLayout>
             </ProtectedRoute>

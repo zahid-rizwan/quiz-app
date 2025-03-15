@@ -22,4 +22,5 @@ public class QuizDTO {
     private Long topicId; // Add topicId
     private String topicName; // Add topicName
     private Set<Long> questionIds;
+    private Set<QuizQuestionDetailDTO> questions;
 }

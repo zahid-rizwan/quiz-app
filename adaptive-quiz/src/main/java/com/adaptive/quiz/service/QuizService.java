@@ -16,5 +16,6 @@ public interface QuizService {
     List<TopicQuizDTO> getQuizzesByTopicId(Long topicId);
     SubjectTopicsDTO getQuizzesBySubjectIdWithQuestions(Long subjectId);
     List<TeacherQuizDetailDTO> getDetailedQuizzesByTeacherId(Long teacherId);
+    QuizDTO createAutomaticQuiz(Long teacherId, AutoQuizRequestDTO requestDTO);
 
 }
