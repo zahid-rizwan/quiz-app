@@ -66,6 +66,9 @@ const SubjectsPage = () => {
 
     fetchSubjects();
   }, []);
+  const handleCreateeQuiz = () => {
+    navigate('/dashboard-teacher/quiz', { state: { from: 'generateQuiz' } });
+  };
 
   const handleSubjectClick = (subjectId) => {
     navigate(`/dashboard-teacher/subjects/${subjectId}`);
@@ -82,6 +85,7 @@ const SubjectsPage = () => {
   const handleGenerateQuiz = () => {
     navigate('/quiz', { state: { from: 'generateQuiz' } });
   };
+  
 
   if (loading) {
     return <div className="container mx-auto py-6 flex justify-center items-center h-64">Loading subjects...</div>;
@@ -159,7 +163,7 @@ const SubjectsPage = () => {
             </button>
             <h2 className="text-2xl font-bold text-center">Select a Subject</h2>
             <button 
-              onClick={handleGenerateQuiz}
+              onClick={handleCreateeQuiz}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition-colors"
             >
               <Plus className="w-5 h-5 mr-2" />

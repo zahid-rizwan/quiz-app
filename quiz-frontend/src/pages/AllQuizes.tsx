@@ -76,6 +76,9 @@ const AllQuizes = () => {
   const handleGoBack = () => {
     navigate('/dashboard/subjects');
   };
+  const handleCreateeQuiz = () => {
+    navigate('/dashboard-teacher/quiz', { state: { from: 'generateQuiz' } });
+  };
   
   const handleGenerateQuiz = () => {
     navigate('/quiz', { state: { from: 'generateQuiz' } });
@@ -115,7 +118,7 @@ const AllQuizes = () => {
         </button>
         <h1 className="text-3xl font-bold text-center">All Quizzes</h1>
         <button 
-          onClick={handleGenerateQuiz}
+          onClick={handleCreateeQuiz}
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg flex items-center transition-colors"
         >
           <Plus className="w-5 h-5 mr-2" />

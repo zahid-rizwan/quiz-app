@@ -265,6 +265,7 @@ public class QuizAttemptServiceImpl implements QuizAttemptService {
 //        questionDTO.setOptions(optionDTOs);
         return questionDTO;
     }
+    
 
     private StudentQuizResultDTO mapToResultDTO(StudentQuizResult result) {
         StudentQuizResultDTO resultDTO = new StudentQuizResultDTO();
