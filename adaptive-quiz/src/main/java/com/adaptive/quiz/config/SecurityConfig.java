@@ -97,6 +97,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -122,7 +124,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http.csrf(customizer->customizer.disable())
                 .authorizeHttpRequests(request-> request
-                        .requestMatchers("/register", "/login", "/public/**").permitAll()
+                        .requestMatchers("/register", "/login", "/public/**","/oauth2/**").permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/teacher/**").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers("/student/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
@@ -131,10 +133,26 @@ public class SecurityConfig {
                         e.authenticationEntryPoint(jwtAuthenticationEntryPoint)
                                 .accessDeniedHandler(accessDeniedHandler)
                 )
-
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .oidcUserService(oidcUserService())
+                                .userService(oauth2UserService())
+                        )
+                        .defaultSuccessUrl("/oauth2/login-success", true)
+                )
                 .httpBasic(Customizer.withDefaults())
-                .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Change this to ALWAYS or IF_REQUIRED for OAuth2
+                .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();
+    }
+    @Bean
+    public OidcUserService oidcUserService() {
+        return new OidcUserService();
+    }
+
+    @Bean
+    public DefaultOAuth2UserService oauth2UserService() {
+        return new DefaultOAuth2UserService();
     }
 
     @Bean
