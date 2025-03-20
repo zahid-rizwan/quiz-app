@@ -36,7 +36,7 @@ public class OAuth2Controller {
                 JwtResponse jwtResponse = userService.generateJwtResponseForOAuth2User(oauth2User);
 
                 // Redirect to frontend with token
-                String redirectUrl = "http://localhost:3000/login?token=" + jwtResponse.getJwtToken();
+                String redirectUrl = "http://localhost:5173/login?token=" + jwtResponse.getJwtToken();
                 response.sendRedirect(redirectUrl);
             } else {
                 response.sendRedirect("/login?error=principal_not_oauth2user");

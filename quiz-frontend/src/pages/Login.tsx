@@ -19,23 +19,19 @@ export default function Login() {
 
   // Handle token from OAuth redirect
   useEffect(() => {
-    // Check for token in URL (for OAuth redirect)
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
     
     if (token) {
-      // Process the token from OAuth
       processOAuthToken(token);
     }
   }, [location]);
 
   const processOAuthToken = async (token: string) => {
     try {
-      // Store token
       localStorage.setItem('token', token);
       
-      // Get user info using the token
-      const response = await axios.get('http://localhost:9090/user/me', {
+      const response = await axios.get('http://localhost:9090/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -46,7 +42,6 @@ export default function Login() {
       
       localStorage.setItem('role', JSON.stringify(role));
       
-      // Handle different roles
       if (role === "STUDENT") {
         localStorage.setItem('id', userData.student.studentId);
         localStorage.setItem('user', JSON.stringify(userData.student));
@@ -69,45 +64,62 @@ export default function Login() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const authenticateUser = async (token: string, userData?: any) => {
     try {
-      const response = await axios.post('http://localhost:9090/login', credentials);
-      localStorage.setItem('token', response.data.jwtToken);
-
-      console.log("this is response");
-      console.log(response);
-      console.log(response.data.jwtToken);
-      const role = response.data.primaryRole || "No role found";
-      console.log(role);
-      localStorage.setItem('role', JSON.stringify(response.data.primaryRole));
-
-      // Update Redux store
+      if (!userData) {
+        const response = await axios.get('http://localhost:9090/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        userData = response.data;
+      }
+      
+      const role = userData.primaryRole || "No role found";
+      localStorage.setItem('role', JSON.stringify(role));
+      
       if (role === "STUDENT") {
-        localStorage.setItem('id', response.data.student.studentId);
-        localStorage.setItem('user', JSON.stringify(response.data.student));
-        dispatch(login(response.data.student));
+        localStorage.setItem('id', userData.student.studentId);
+        localStorage.setItem('user', JSON.stringify(userData.student));
+        dispatch(login(userData.student));
         toast.success('Welcome back, Quiz Master!');
         navigate('/dashboard');
       } else if (role === "TEACHER") {
+        localStorage.setItem('id', userData.teacher.teacherId);
+        localStorage.setItem('user', JSON.stringify(userData.teacher));
+        dispatch(login(userData.teacher));
         toast.success('Welcome back, Quiz Master!');
-        localStorage.setItem('id', response.data.teacher.teacherId);
-        localStorage.setItem('user', JSON.stringify(response.data.teacher));
-        dispatch(login(response.data.teacher));
         navigate("/dashboard-teacher/");
       } else {
+        localStorage.setItem('user', JSON.stringify(userData.user || userData));
+        dispatch(login(userData.user || userData));
         toast.success('Welcome back, Quiz Master!');
         navigate("/dashboard-admin/");
       }
     } catch (error) {
+      console.error('Authentication failed:', error);
+      toast.error('Authentication failed. Please try again.');
+      localStorage.removeItem('token');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post('http://localhost:9090/login', credentials);
+      const token = response.data.jwtToken;
+      localStorage.setItem('token', token);
+      await authenticateUser(token, response.data);
+    } catch (error) {
+      console.error('Login failed:', error);
       toast.error('Login failed. Please try again.');
     }
   };
 
   const handleOAuthLogin = (provider: string) => {
-    // Redirect to backend OAuth endpoint
     window.location.href = `http://localhost:9090/oauth2/authorization/${provider}?prompt=select_account`;
+    // Implement OAuth login logic here
+    console.log(`Logging in with ${provider}`);
   };
 
   return (
@@ -211,55 +223,22 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              <div>
-                <button
-                  onClick={() => handleOAuthLogin('google')}
-                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1Z" />
-                  </svg>
-                </button>
-              </div>
+            <div className="mt-6 flex justify-center items-center gap-3">
+  <div>
+    <button
+      onClick={() => handleOAuthLogin('google')}
+      className="w-28 inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+    >
+      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+        <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+        <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+        <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+      </svg>
+    </button>
+  </div>
+</div>
 
-              <div>
-                <button
-                  onClick={() => handleOAuthLogin('github')}
-                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-                >
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-
-              <div>
-                <button
-                  onClick={() => handleOAuthLogin('linkedin')}
-                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-                >
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo credentials</span>
-              </div>
-            </div>
-            <div className="mt-2 text-center text-xs text-gray-500">
-              Email: student@quiz.edu<br />
-              Password: password
-            </div>
           </div>
         </div>
       </div>

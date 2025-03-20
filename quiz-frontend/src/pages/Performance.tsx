@@ -43,7 +43,19 @@ export default function Performance() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get('http://localhost:9090/api/quiz-attempts/student/1', {
+        const userString = localStorage.getItem('user');
+        if (!userString) {
+          throw new Error('User data not found in localStorage');
+        }
+        
+        const userData = JSON.parse(userString);
+        const studentId = userData.studentId;
+        
+        if (!studentId) {
+          throw new Error('Student ID not found in user data');
+        }
+        
+        const response = await axios.get(`http://localhost:9090/api/quiz-attempts/student/${studentId}`, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${AUTH_TOKEN}`,

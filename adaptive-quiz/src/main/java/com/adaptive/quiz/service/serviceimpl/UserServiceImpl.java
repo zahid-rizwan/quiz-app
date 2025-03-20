@@ -22,6 +22,7 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -216,5 +217,39 @@ public class UserServiceImpl implements UserService {
 
         // If we couldn't find the associated entity or user has no specific role
         return new JwtResponse(token, user);
+    }
+    @Override
+    public Map<String, Object> getCurrentUserData(String email) {
+        User user = userRepository.findByEmail(email);
+
+        if (user == null) {
+            throw new UserNotFoundException("User not found with email: " + email);
+        }
+
+        // Determine primary role
+        String primaryRole = user.getRoles().stream()
+                .map(Role::getName)
+                .findFirst()
+                .orElse("No role found");
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("jwtToken", jwtService.generateToken(user.getEmail()));
+        response.put("user", user);
+        response.put("primaryRole", primaryRole);
+
+        // Add student or teacher data if applicable
+        if (primaryRole.equals("STUDENT")) {
+            Student student = studentRepository.findByUserIdWithoutAssociations(user.getId());
+            if (student != null) {
+                response.put("student", student);
+            }
+        } else if (primaryRole.equals("TEACHER")) {
+            Teacher teacher = teacherRepository.findByUserIdWithoutAssociations(user.getId());
+            if (teacher != null) {
+                response.put("teacher", teacher);
+            }
+        }
+
+        return response;
     }
 }

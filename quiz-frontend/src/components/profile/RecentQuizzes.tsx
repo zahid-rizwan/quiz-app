@@ -7,14 +7,26 @@ export default function RecentQuizzes() {
   const [error, setError] = useState(null);
   
   // Assuming student ID is available from auth context or props
-  // For now, we'll hardcode it as 1
-  const studentId = 1;
 
+  let studentId;
   useEffect(() => {
     const fetchRecentQuizzes = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token'); // Get token from localStorage
+        const userString = localStorage.getItem('user');
+        if (!userString) {
+          throw new Error('User data not found in localStorage');
+        }
+        
+        const userData = JSON.parse(userString);
+        studentId = userData.studentId;
+        
+        if (!studentId) {
+          throw new Error('Student ID not found in user data');
+        }
+        
+        const token = localStorage.getItem('token');
+ // Get token from localStorage
         
         const response = await fetch(`http://localhost:9090/api/quiz-attempts/student/${studentId}`, {
           headers: {

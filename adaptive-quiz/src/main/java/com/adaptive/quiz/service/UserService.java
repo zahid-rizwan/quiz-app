@@ -21,6 +21,7 @@ import com.adaptive.quiz.entity.User;
 import com.adaptive.quiz.model.JwtRequest;
 import com.adaptive.quiz.model.JwtResponse;
 import java.util.List;
+import java.util.Map;
 
 public interface UserService {
     User createUser(User user);
@@ -29,4 +30,5 @@ public interface UserService {
     List<User> getUsers();
     User addRoleToUser(int userId, String roleName);
     User removeRoleFromUser(int userId, String roleName);
+    Map<String, Object> getCurrentUserData(String email);
 }

@@ -57,6 +57,7 @@ package com.adaptive.quiz.controller;
 
 import com.adaptive.quiz.entity.Role;
 import com.adaptive.quiz.entity.User;
+import com.adaptive.quiz.exception.UserNotFoundException;
 import com.adaptive.quiz.model.JwtRequest;
 import com.adaptive.quiz.model.JwtResponse;
 import com.adaptive.quiz.service.RoleService;
@@ -66,6 +67,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
@@ -160,5 +162,22 @@ public class UserController {
     @GetMapping("/csrf")
     public CsrfToken getCsrfToken(HttpServletRequest request) {
         return (CsrfToken) request.getAttribute("_csrf");
+    }
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            String email = authentication.getName();
+            Map<String, Object> userData = userService.getCurrentUserData(email);
+            return ResponseEntity.ok(userData);
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error retrieving user data: " + e.getMessage());
+        }
     }
 }

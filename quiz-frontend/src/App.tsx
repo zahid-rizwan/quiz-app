@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { login as loginDispatch } from "./store/slice/authSlice";
 
@@ -38,13 +38,17 @@ import AllQuizes from "./pages/AllQuizes";
 
 function App() {
   const dispatch = useDispatch();
-
+  const location=useLocation();
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     if (user && localStorage.getItem("token")) {
       dispatch(loginDispatch(user));
     }
   }, [dispatch]);
+
+  useEffect(()=>{
+    console.log("location params:",location.search.split('=')[1])
+  },[location])
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -10,14 +10,26 @@ export default function QuizHistory() {
     quizzesCompleted: 0,
     timeSpent: '0 min'
   });
+  let studentId;
 
   // Assuming student ID is available from auth context or props
-  // For now, we'll hardcode it as 1
-  const studentId = 1;
+
 
   useEffect(() => {
     const fetchQuizHistory = async () => {
       try {
+        const userString = localStorage.getItem('user');
+        if (!userString) {
+          throw new Error('User data not found in localStorage');
+        }
+        
+        const userData = JSON.parse(userString);
+        studentId = userData.studentId;
+        
+        if (!studentId) {
+          throw new Error('Student ID not found in user data');
+        }
+        
         setLoading(true);
         const token = localStorage.getItem('token'); // Get token from localStorage
         
